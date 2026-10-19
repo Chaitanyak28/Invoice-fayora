@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fayora Filmss - Invoice Tool V2</title>
+    <style>
+        :root { 
+            --primary: #111111; 
+            --bg-main: #f4f5f6; 
+            --invoice-bg: #ffffff; 
+            --text-color: #222222;
+            --font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box;
+        }
+
+        @page { 
+            margin: 1.2cm; 
+        }
+
+        body { 
+            font-family: var(--font-family); 
+            padding: 20px; 
+            color: var(--text-color); 
+            background-color: var(--bg-main); 
+            margin: 0;
+        }
+        
+        .invoice-box { 
+            max-width: 850px; 
+            margin: auto; 
+            border: 1px solid #e1e1e6; 
+            padding: 45px; 
+            background-color: var(--invoice-bg); 
+            border-radius: 6px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06); 
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 25px; }
+        .logo-section { width: 150px; height: 90px; border: 1px dashed #bbb; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; overflow: hidden; position: relative; background: #fafafa; }
+        .logo-section img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        textarea, input, select { 
+            border: 1px solid rgba(0,0,0,0.06); padding: 7px 10px; width: 100%; 
+            font-family: inherit; font-size: 14px; box-sizing: border-box; 
+            background: transparent; color: var(--text-color);
+            resize: none;
+            line-height: 1.5;
+            border-radius: 4px;
+        }
+        input[type="text"]:focus, textarea:focus {
+            border-color: #999;
+            outline: none;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        ::placeholder { color: var(--text-color); opacity: 0.35; }
+
+        .item-name-row { display: flex; align-items: center; gap: 10px; }
+        .item-name { font-weight: 600; font-size: 15px; border-bottom: none; padding: 4px 0; }
+        .desc-text { font-size: 12px; opacity: 0.75; border-top: none; min-height: 38px; margin-top: 5px; padding: 4px 0; }
+
+        .desc-toggle, .btn-del { 
+            font-size: 11px; cursor: pointer; background: #f0f0f4; border: 1px solid #ddd; 
+            padding: 4px 8px; border-radius: 4px; white-space: nowrap; height: fit-content;
+            color: #444; transition: 0.2s;
+        }
+        .btn-del { background: #ffebeb; border-color: #fcc; color: #b32424; }
+        .btn-del:hover { background: #fcd7d7; }
+
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed; }
+        th { background: var(--primary) !important; color: #ffffff !important; text-align: left; padding: 12px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 12px 14px; border-bottom: 1px solid #f0f0f5; vertical-align: top; }
+        
+        .footer { 
+            display: grid; 
+            grid-template-columns: 1fr 340px; 
+            gap: 40px; 
+            margin-top: 25px; 
+            page-break-inside: avoid;
+        }
+        .qr-placeholder { width: 110px; height: 110px; border: 1px dashed #bbb; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fafafa; border-radius: 6px; position: relative; }
+        .qr-placeholder img { width: 100%; height: 100%; object-fit: contain; }
+
+        #notes {
+            min-height: 85px;
+            overflow: hidden;
+            display: block;
+        }
+
+        .totals-table td { border: none; padding: 6px 0; text-align: right; }
+        .grand-total-row { font-weight: bold; font-size: 1.15em; color: var(--primary); border-top: 1px solid #eee !important; }
+        .balance-row { font-weight: bold; font-size: 1.25em; color: #c93b3b; border-top: 2px solid var(--primary) !important; padding-top: 10px !important; }
+
+        .paid-stamp {
+            display: none;
+            color: #198754;
+            border: 2px solid #198754;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 800;
+            border-radius: 4px;
+            letter-spacing: 1.5px;
+            margin-top: 6px;
+            text-transform: uppercase;
+            width: fit-content;
+            margin-left: auto;
+        }
+
+        .paid-thankyou {
+            display: none;
+            text-align: center;
+            margin-top: 35px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #333333;
+            text-transform: uppercase;
+        }
+
+        .mode-paid .paid-stamp { display: inline-block; }
+        .mode-paid .unpaid-element { display: none !important; }
+        .mode-paid .grand-total-row { border-bottom: 2px solid #198754; }
+        .mode-paid .paid-thankyou { display: block; }
+
+        #controls { 
+            position: fixed; top: 20px; right: 20px; width: 220px; 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 6px 30px rgba(0,0,0,0.15); z-index: 1000;
+            max-height: 90vh; overflow-y: auto; cursor: move;
+        }
+        .control-group { margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        
+        .btn { display: block; width: 100%; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; margin-bottom: 8px; font-family: 'Segoe UI', sans-serif; transition: 0.2s; text-align: center; font-size: 13px; }
+        .btn-add { background: #333333; }
+        .btn-print { background: #198754; margin-top: 10px; }
+        .btn-reset { background: #dc3545; }
+        .btn-toggle { background: #6c757d; font-size: 11px; padding: 6px; margin-bottom: 15px; }
+        .btn:hover { opacity: 0.9; }
+
+        @media print {
+            #controls, .no-print, .desc-toggle, .btn-del { display: none !important; }
+            body { background-color: #ffffff !important; padding: 0; }
+            .invoice-box { box-shadow: none; border: none; width: 100%; padding: 0; background-color: #ffffff !important; color: #000000 !important; }
+            th { background-color: var(--primary) !important; color: #ffffff !important; }
+            textarea, input { border: none !important; padding: 4px 0 !important; border-radius: 0 !important; }
+            ::placeholder { color: transparent !important; }
+            .logo-section, .qr-placeholder { border: none !important; background: transparent !important; }
+            .logo-section span, .qr-placeholder span { display: none !important; }
+            tr { page-break-inside: avoid; }
+            html, body, .invoice-box { height: auto !important; } 
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <button class="btn btn-toggle" onclick="toggleSidebar()" id="toggleBtn">Hide Controls</button>
+    <div id="sidebarContent">
+        <div class="control-group">
+            <label style="font-size: 10px; font-weight: bold; color: #555;">DOCUMENT MODE</label>
+            <select id="docModeSelect" onchange="switchDocMode(this.value); saveToStorage();" style="font-weight: 600;">
+                <option value="invoice">Regular Invoice (With Dues & QR)</option>
+                <option value="paid">Paid Invoice (Fully Cleared)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label style="font-size: 10px; font-weight: bold; color: #555;">SELECT FONT</label>
+            <select id="fontSelect" onchange="updateUI(); saveToStorage();">
+                <option value="'Segoe UI', Arial, sans-serif">Modern Standard</option>
+                <option value="'Times New Roman', serif">Formal Serif</option>
+                <option value="'Courier New', monospace">Technical Mono</option>
+                <option value="Georgia, serif">Elegant Classic</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label style="font-size: 10px; font-weight: bold; color: #555;">COLORS</label>
+            <div style="display: flex; gap: 4px;">
+                <input type="color" id="primaryColor" value="#111111" oninput="updateUI()" onchange="saveToStorage()" title="Theme Color">
+                <input type="color" id="textColor" value="#222222" oninput="updateUI()" onchange="saveToStorage()" title="Text Color">
+                <input type="color" id="invoiceBgColor" value="#ffffff" oninput="updateUI()" onchange="saveToStorage()" title="Paper Color">
+            </div>
+        </div>
+        
+        <button class="btn btn-add" onclick="addRow()">➕ Add Line Item</button>
+        <button class="btn btn-reset" onclick="resetInvoice()">🔄 Reset Invoice</button>
+        <button class="btn btn-print" onclick="window.print()">🖨️ Save as PDF</button>
+    </div>
+</div>
+
+<div class="invoice-box" id="invoiceArea">
+    <div class="header">
+        <div>
+            <div class="logo-section" onclick="document.getElementById('logoInput').click()">
+                <span id="logoLabel" style="color: #999; font-size: 11px; font-weight: 500; display: none;">+ ADD LOGO</span>
+                <img id="logoImg" src="Fayora.JPEG" alt="Logo" onerror="this.style.display='none'; document.getElementById('logoLabel').style.display='block';">
+            </div>
+            <input type="file" id="logoInput" style="display:none" accept="image/*" onchange="previewImg(this, 'logoImg', 'logoLabel')">
+            
+            <div style="margin-top: 20px; width: 460px;">
+                <textarea id="myInfo" placeholder="YOUR BUSINESS NAME&#10;Address&#10;GSTIN" rows="4" oninput="autoResizeTextarea(this); saveToStorage();" style="font-weight: 500; font-size: 14px; letter-spacing: 0.2px;">FAYORA FILMSS
+ADDRESS: 17/B, Hemant Manjrekar Market, Koliwada, Sion, Mumbai, Maharashtra 400037
+Phone/WhatsApp: 9004554732 / 9372714615</textarea>
+            </div>
+        </div>
+        <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <h1 id="docTitle" style="margin: 0; font-size: 34px; font-weight: 800; letter-spacing: 1px; color: var(--primary);">INVOICE</h1>
+                <div class="paid-stamp">PAID IN FULL</div>
+            </div>
+            <div style="margin-top: 15px;">
+                <p style="margin: 0 0 6px 0; font-size: 14px;">No: <input type="text" id="invNum" value="001" style="width: 110px; text-align: right; padding: 4px 6px;" oninput="saveToStorage()"></p>
+                <p style="margin: 0; font-size: 14px;">Date: <input type="date" id="invDate" style="width: 140px; text-align: right; padding: 4px 6px;" onchange="saveToStorage()"></p>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 25px;">
+        <h4 style="color: var(--primary); margin: 0 0 6px 0; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 700;">BILL TO:</h4>
+        <textarea id="billTo" placeholder="Client Name & Billing Details Address" rows="3" oninput="autoResizeTextarea(this); saveToStorage();" style="background: rgba(0,0,0,0.01); border-color: rgba(0,0,0,0.08); padding: 10px;"></textarea>
+    </div>
+
+    <table id="invoiceTable">
+        <thead>
+            <tr>
+                <th style="width: 55%;">Description</th>
+                <th style="width: 12%;">Qty</th>
+                <th style="width: 15%;">Price (₹)</th>
+                <th style="width: 18%; text-align: right;">Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody id="items">
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <div>
+            <div class="unpaid-element">
+                <p style="font-size: 10px; font-weight: bold; margin: 0 0 6px 0; letter-spacing: 0.5px; color: #555;">PAYMENT QR CODE</p>
+                <div class="qr-placeholder" onclick="document.getElementById('qrInput').click()">
+                    <span id="qrLabel" style="color: #999; font-size: 10px; font-weight: 500; display: none;">ADD QR</span>
+                    <img id="qrImg" src="qr.png" alt="QR Code" onerror="this.style.display='none'; document.getElementById('qrLabel').style.display='block';">
+                </div>
+                <input type="file" id="qrInput" style="display:none" accept="image/*" onchange="previewImg(this, 'qrImg', 'qrLabel')">
+                
+                <div style="margin-top: 18px;">
+                    <h4 style="font-size: 11px; color: #555; margin: 0 0 6px 0; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700;">TERMS & BANK DETAILS:</h4>
+                    <textarea id="notes" rows="3" oninput="autoResizeTextarea(this); saveToStorage();" style="font-size: 13px; border-color: rgba(0,0,0,0.06); padding: 8px;">Bank Name: STATE BANK OF INDIA
+UPI ID : 8879549720@sbi
+Terms: Please share a screenshot after making the payment.</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <table class="totals-table">
+                <tr>
+                    <td style="color: #555; font-size: 14px;">Subtotal:</td>
+                    <td id="subtotal" style="width: 140px; font-weight: 500; font-size: 14px;">₹0.00</td>
+                </tr>
+                <tr>
+                    <td style="color: #555; font-size: 14px;">GST/Tax (<input type="number" id="taxRate" value="0" min="0" step="any" style="width: 45px; text-align: center; padding: 2px; border-radius: 3px;" oninput="calculate(); saveToStorage();">%):</td>
+                    <td id="taxAmount" style="font-weight: 500; font-size: 14px;">₹0.00</td>
+                </tr>
+                <tr class="grand-total-row">
+                    <td style="font-size: 15px;">Grand Total:</td>
+                    <td id="grand-total" style="font-size: 15px;">₹0.00</td>
+                </tr>
+                <tr class="unpaid-element">
+                    <td style="color: #555; font-size: 14px; padding-top: 8px;">Advance Paid (₹):</td>
+                    <td style="padding-top: 8px;"><input type="number" id="advancePaid" value="0" min="0" step="any" style="width: 110px; text-align: right; padding: 4px 6px; font-weight: 500; font-size: 14px; border-radius: 3px;" oninput="calculate(); saveToStorage();"></td>
+                </tr>
+                <tr class="balance-row unpaid-element">
+                    <td>Remaining Balance:</td>
+                    <td id="remainingBalance">₹0.00</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="paid-thankyou">
+        THANK YOU FOR CHOOSING FAYORA FILMSS & MEDIA !
+    </div>
+</div>
+
+<script>
+    document.getElementById('invDate').valueAsDate = new Date();
+    const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+
+    const storageKey = 'fayora_invoice_data_v2';
+    const logoKey = 'logoImg_v2';
+    const qrKey = 'qrImg_v2';
+
+    function switchDocMode(mode) {
+        const area = document.getElementById('invoiceArea');
+        const title = document.getElementById('docTitle');
+        if (mode === 'paid') {
+            area.classList.add('mode-paid');
+            title.innerText = 'PAID INVOICE';
+        } else {
+            area.classList.remove('mode-paid');
+            title.innerText = 'INVOICE';
+        }
+        document.querySelectorAll('textarea').forEach(el => autoResizeTextarea(el));
+    }
+
+    function toggleSidebar() {
+        const content = document.getElementById("sidebarContent");
+        const btn = document.getElementById("toggleBtn");
+        const box = document.getElementById("controls");
+        if (content.style.display === "none") {
+            content.style.display = "block";
+            btn.innerText = "Hide Controls";
+            box.style.width = "220px";
+        } else {
+            content.style.display = "none";
+            btn.innerText = "Show ⚙️";
+            box.style.width = "auto";
+            box.style.padding = "10px";
+        }
+    }
+
+    function toggleDesc(btn) {
+        const txtArea = btn.closest('td').querySelector('.desc-text');
+        if (txtArea.style.display === "none") {
+            txtArea.style.display = "block";
+            btn.innerText = "Remove Desc";
+        } else {
+            txtArea.style.display = "none";
+            btn.innerText = "Show Desc";
+        }
+        saveToStorage();
+    }
+
+    function autoResizeTextarea(element) {
+        if (!element) return;
+        element.style.height = 'auto';
+        element.style.height = Math.max(element.scrollHeight, 80) + 'px';
+    }
+
+    function resetInvoice() {
+        if(confirm("Clear client info and items? Your branding will stay.")) {
+            document.getElementById('billTo').value = "";
+            document.getElementById('billTo').style.height = 'auto';
+            document.getElementById('advancePaid').value = 0;
+            document.getElementById('items').innerHTML = "";
+            addRow();
+            calculate();
+            saveToStorage();
+        }
+    }
+
+    const dragElement = document.getElementById("controls");
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    dragElement.onmousedown = (e) => {
+        if (["INPUT", "SELECT", "BUTTON"].includes(e.target.tagName)) return;
+        pos3 = e.clientX; pos4 = e.clientY;
+        document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+        document.onmousemove = (e) => {
+            pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+            pos3 = e.clientX; pos4 = e.clientY;
+            dragElement.style.top = (dragElement.offsetTop - pos2) + "px";
+            dragElement.style.left = (dragElement.offsetLeft - pos1) + "px";
+            dragElement.style.right = "auto";
+        };
+    };
+
+    function updateUI() {
+        document.documentElement.style.setProperty('--primary', document.getElementById('primaryColor').value);
+        document.documentElement.style.setProperty('--text-color', document.getElementById('textColor').value);
+        document.documentElement.style.setProperty('--invoice-bg', document.getElementById('invoiceBgColor').value);
+        document.documentElement.style.setProperty('--font-family', document.getElementById('fontSelect').value);
+    }
+
+    function addRow(data = null) {
+        const tbody = document.getElementById('items');
+        
+        const rowHTML = `<tr>
+            <td>
+                <div class="item-name-row">
+                    <input type="text" placeholder="${data ? 'Service Name' : 'Service / Project Name'}" class="item-name" value="${data ? data.name : ''}" oninput="saveToStorage()">
+                    <button class="desc-toggle no-print" onclick="toggleDesc(this)">${data && data.descHidden ? 'Show Desc' : 'Remove Desc'}</button>
+                    <button class="btn-del no-print" onclick="deleteRow(this)">❌</button>
+                </div>
+                <textarea class="desc-text" placeholder="Description of work..." oninput="autoResizeTextarea(this); saveToStorage();" style="display: ${data && data.descHidden ? 'none' : 'block'}">${data ? data.desc : ''}</textarea>
+            </td>
+            <td><input type="number" class="qty" value="${data ? data.qty : '1'}" min="0" step="any" oninput="calculate(); saveToStorage();" style="padding: 6px;"></td>
+            <td><input type="number" class="price" value="${data ? data.price : '0'}" min="0" step="any" oninput="calculate(); saveToStorage();" style="padding: 6px;"></td>
+            <td style="text-align: right; font-weight: 600; font-size: 14px; padding-top: 18px;" class="item-total">₹0.00</td>
+        </tr>`;
+        
+        tbody.insertAdjacentHTML('beforeend', rowHTML);
+        
+        const lastRow = tbody.lastElementChild;
+        const txtArea = lastRow.querySelector('.desc-text');
+        autoResizeTextarea(txtArea);
+    }
+
+    function deleteRow(btn) {
+        const tbody = document.getElementById('items');
+        if (tbody.querySelectorAll('tr').length > 1) {
+            btn.closest('tr').remove();
+            calculate();
+            saveToStorage();
+        } else {
+            const row = btn.closest('tr');
+            row.querySelector('.item-name').value = '';
+            row.querySelector('.desc-text').value = '';
+            row.querySelector('.qty').value = 1;
+            row.querySelector('.price').value = 0;
+            calculate();
+            saveToStorage();
+        }
+    }
+
+    function calculate() {
+        let sub = 0;
+        document.querySelectorAll('#items tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('.qty').value) || 0;
+            const price = parseFloat(row.querySelector('.price').value) || 0;
+            const total = qty * price;
+            sub += total;
+            row.querySelector('.item-total').innerText = inr.format(total);
+        });
+        const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+        const tax = sub * (taxRate / 100);
+        const grandTotal = sub + tax;
+        const advancePaid = parseFloat(document.getElementById('advancePaid').value) || 0;
+        const remainingBalance = grandTotal - advancePaid;
+
+        document.getElementById('subtotal').innerText = inr.format(sub);
+        document.getElementById('taxAmount').innerText = inr.format(tax);
+        document.getElementById('grand-total').innerText = inr.format(grandTotal);
+        document.getElementById('remainingBalance').innerText = inr.format(remainingBalance);
+    }
+
+    function previewImg(input, imgId, labelId) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById(imgId).src = e.target.result;
+                document.getElementById(imgId).style.display = 'block';
+                document.getElementById(labelId).style.display = 'none';
+                localStorage.setItem(imgId === 'logoImg' ? logoKey : qrKey, e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function initImages() {
+        const savedLogo = localStorage.getItem(logoKey);
+        const logoImg = document.getElementById('logoImg');
+        const logoLabel = document.getElementById('logoLabel');
+        if(savedLogo) {
+            logoImg.src = savedLogo;
+            logoImg.style.display = 'block';
+            logoLabel.style.display = 'none';
+        }
+
+        const savedQr = localStorage.getItem(qrKey);
+        const qrImg = document.getElementById('qrImg');
+        const qrLabel = document.getElementById('qrLabel');
+        if(savedQr) {
+            qrImg.src = savedQr;
+            qrImg.style.display = 'block';
+            qrLabel.style.display = 'none';
+        }
+    }
+
+    function saveToStorage() {
+        const items = [];
+        document.querySelectorAll('#items tr').forEach(row => {
+            items.push({
+                name: row.querySelector('.item-name').value,
+                desc: row.querySelector('.desc-text').value,
+                qty: row.querySelector('.qty').value,
+                price: row.querySelector('.price').value,
+                descHidden: row.querySelector('.desc-text').style.display === 'none'
+            });
+        });
+
+        const data = {
+            docMode: document.getElementById('docModeSelect').value,
+            myInfo: document.getElementById('myInfo').value,
+            invNum: document.getElementById('invNum').value,
+            invDate: document.getElementById('invDate').value,
+            billTo: document.getElementById('billTo').value,
+            notes: document.getElementById('notes').value,
+            taxRate: document.getElementById('taxRate').value,
+            advancePaid: document.getElementById('advancePaid').value,
+            primaryColor: document.getElementById('primaryColor').value,
+            textColor: document.getElementById('textColor').value,
+            invoiceBgColor: document.getElementById('invoiceBgColor').value,
+            fontSelect: document.getElementById('fontSelect').value,
+            items: items
+        };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+        const raw = localStorage.getItem(storageKey);
+        if(!raw) {
+            addRow();
+            return;
+        }
+        try {
+            const data = JSON.parse(raw);
+            if(data.docMode) {
+                document.getElementById('docModeSelect').value = data.docMode;
+                switchDocMode(data.docMode);
+            }
+            if(data.myInfo) document.getElementById('myInfo').value = data.myInfo;
+            if(data.invNum) document.getElementById('invNum').value = data.invNum;
+            if(data.invDate) document.getElementById('invDate').value = data.invDate;
+            if(data.billTo) document.getElementById('billTo').value = data.billTo;
+            if(data.notes) document.getElementById('notes').value = data.notes;
+            if(data.taxRate) document.getElementById('taxRate').value = data.taxRate;
+            if(data.advancePaid) document.getElementById('advancePaid').value = data.advancePaid;
+            if(data.primaryColor) document.getElementById('primaryColor').value = data.primaryColor;
+            if(data.textColor) document.getElementById('textColor').value = data.textColor;
+            if(data.invoiceBgColor) document.getElementById('invoiceBgColor').value = data.invoiceBgColor;
+            if(data.fontSelect) document.getElementById('fontSelect').value = data.fontSelect;
+            
+            const tbody = document.getElementById('items');
+            tbody.innerHTML = "";
+            
+            if(data.items && data.items.length > 0) {
+                data.items.forEach(item => addRow(item));
+            } else {
+                addRow();
+            }
+        } catch(e) { 
+            console.error(e);
+            addRow();
+        }
+    }
+
+    window.onload = function() {
+        initImages();
+        loadFromStorage();
+        updateUI();
+        calculate();
+        setTimeout(() => {
+            document.querySelectorAll('textarea').forEach(el => autoResizeTextarea(el));
+        }, 50);
+    };
+</script>
+</body>
+</html>
